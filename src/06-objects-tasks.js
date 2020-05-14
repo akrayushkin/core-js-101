@@ -6,7 +6,6 @@
  *                                                                                                *
  ************************************************************************************************ */
 
-
 /**
  * Returns the rectagle object with width and height parameters and getArea() method
  *
@@ -30,7 +29,6 @@ function Rectangle(width, height) {
   };
 }
 
-
 /**
  * Returns the JSON representation of specified object
  *
@@ -44,7 +42,6 @@ function Rectangle(width, height) {
 function getJSON(obj) {
   return JSON.stringify(obj);
 }
-
 
 /**
  * Returns the object of specified type from JSON representation
@@ -62,7 +59,6 @@ function fromJSON(proto, json) {
   const values = Object.values(obj);
   return new proto.constructor(...values);
 }
-
 
 /**
  * Css selectors builder
@@ -118,50 +114,97 @@ function fromJSON(proto, json) {
  *  For more examples see unit tests.
  */
 
-const cssSelectorBuilder = {
-  str: '',
+class Selector {
+  constructor() {
+    this.resultSelector = '';
+    this.hash = new Set();
+    this.order = 0;
+  }
+
+  checkOrder(order) {
+    if (order < this.order) {
+      throw new Error(
+        'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element',
+      );
+    }
+    this.order = order;
+  }
 
   element(value) {
-    this.str += value;
+    this.checkOrder(0);
+    if (this.hash.has('element')) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector',
+      );
+    }
+    this.hash.add('element');
+    this.resultSelector += value;
     return this;
-  },
+  }
 
   id(value) {
-    this.str += `#${value}`;
+    this.checkOrder(1);
+    if (this.hash.has('id')) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector',
+      );
+    }
+    this.hash.add('id');
+    this.resultSelector += `#${value}`;
     return this;
-  },
+  }
 
   class(value) {
-    this.str += `.${value}`;
+    this.checkOrder(2);
+    this.resultSelector += `.${value}`;
     return this;
-  },
+  }
 
   attr(value) {
-    this.str += `[${value}]`;
+    this.checkOrder(3);
+    this.resultSelector += `[${value}]`;
     return this;
-  },
+  }
 
   pseudoClass(value) {
-    this.str += `:${value}`;
+    this.checkOrder(4);
+    this.resultSelector += `:${value}`;
     return this;
-  },
+  }
 
   pseudoElement(value) {
-    this.str += `::${value}`;
+    this.checkOrder(5);
+    if (this.hash.has('pseudo')) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector',
+      );
+    }
+    this.hash.add('pseudo');
+    this.resultSelector += `::${value}`;
     return this;
-  },
+  }
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
-  },
+  combine(selector1, combinator, selector2) {
+    this.resultSelector = `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
+    return this;
+  }
 
   stringify() {
-    const result = this.str;
-    this.str = '';
-    return result;
-  },
-};
+    return this.resultSelector;
+  }
+}
 
+const cssSelectorBuilder = {
+  element: (value) => new Selector().element(value),
+  id: (value) => new Selector().id(value),
+  class: (value) => new Selector().class(value),
+  attr: (value) => new Selector().attr(value),
+  pseudoClass: (value) => new Selector().pseudoClass(value),
+  pseudoElement: (value) => new Selector().pseudoElement(value),
+  combine: (selector1, combinator, selector2) => new Selector()
+    .combine(selector1, combinator, selector2),
+  stringify: () => new Selector().stringify(),
+};
 
 module.exports = {
   Rectangle,
